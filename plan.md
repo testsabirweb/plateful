@@ -17,6 +17,10 @@ The goal is to deliver a **production-grade, minimal but well-structured system*
 - **Submission:** GitHub repo (public or private invite); runnable with `docker-compose up`, testable with `go test ./...`.
 - **README** must cover setup, architecture decisions, trade-offs, and “what I’d add with more time” (see [section 12 — README](#12-readme)).
 
+### Progress workflow
+
+After each implementation step: **commit** the changes, then **update this file** — check off completed TODOs (and add short notes where something was deferred or done out of order).
+
 ---
 
 ## Table of contents
@@ -87,13 +91,13 @@ infra/
 
 ### TODO
 
-- [ ] Initialize Go module
-- [ ] Create project structure (see layout above)
-- [ ] Add Makefile (optional but recommended):
-  - `make run`
-  - `make test`
-  - `make generate`
-- [ ] Setup environment config (env vars)
+- [x] Initialize Go module
+- [x] Create project structure (see layout above)
+- [x] Add Makefile:
+  - [x] `make test`
+  - [x] `make generate` (sqlc)
+  - [x] `make run-api` / `make run-worker` (no single `make run`; optional to add later)
+- [x] Setup environment config (env vars) — `internal/config` (`HTTP_ADDR`, `DATABASE_URL`)
 
 ---
 
@@ -123,16 +127,16 @@ cancelled
 
 ### TODO
 
-- [ ] Choose status representation:
+- [x] Choose status representation:
   - [ ] ENUM (strict DB-level validation)
-  - [ ] TEXT + CHECK constraint (simpler migrations)
-- [ ] Create migration files using golang-migrate:
-  - [ ] `create_orders_table.up.sql`
-  - [ ] `create_orders_table.down.sql`
-- [ ] Add indexes:
-  - [ ] `status`
-  - [ ] `created_at`
-- [ ] Verify migrations run via CLI and Docker
+  - [x] TEXT + CHECK constraint (simpler migrations)
+- [x] Create migration files using golang-migrate:
+  - [x] `000001_create_orders_table.up.sql`
+  - [x] `000001_create_orders_table.down.sql`
+- [x] Add indexes:
+  - [x] `status`
+  - [x] `created_at`
+- [x] Verify migrations run via CLI and Docker (`make migrate-up` / `make migrate-local` with Postgres)
 
 ---
 
@@ -140,18 +144,18 @@ cancelled
 
 ### Configuration
 
-- [ ] Create `sqlc.yaml`
-- [ ] Configure:
+- [x] Create `sqlc.yaml`
+- [x] Configure:
   - schema: `db/migrations`
   - queries: `db/query`
   - engine: `postgresql`
 
 ### Queries to implement
 
-- [ ] `CreateOrder`
-- [ ] `GetOrderByID`
-- [ ] `UpdateOrderStatus`
-- [ ] `ListOrders` (with filters)
+- [x] `CreateOrder`
+- [x] `GetOrderByID`
+- [x] `UpdateOrderStatus`
+- [x] `ListOrders` (with filters)
 
 ### Filtering strategy
 
@@ -167,13 +171,13 @@ AND (created_at <= $3 OR $3 IS NULL)
 
 ### TODO
 
-- [ ] Use `sqlc.narg()` for nullable params
-- [ ] Generate code: `sqlc generate`
-- [ ] Wrap generated queries in repository layer
+- [x] Use `sqlc.narg()` for nullable params (`ListOrders` filters)
+- [x] Generate code: `sqlc generate` / `make generate`
+- [x] Wrap generated queries in repository layer (`internal/store` → `internal/store/db`)
 
 ### Concurrency safety (important)
 
-- [ ] Implement compare-and-set update:
+- [x] Implement compare-and-set update (`UpdateOrderStatus` in `db/query/orders.sql`)
 
 ```sql
 UPDATE orders
@@ -181,7 +185,7 @@ SET status = $new
 WHERE id = $id AND status = $current
 ```
 
-- [ ] Handle 0 rows affected → conflict error
+- [x] Handle 0 rows affected → conflict error (`internal/store`: `ErrStatusConflict`)
 
 ---
 
@@ -310,8 +314,8 @@ type Queue interface {
 ### TODO
 
 - [ ] Write Dockerfile: multi-stage build, small final image
-- [ ] Write `docker-compose.yml`: link services, env vars, expose ports
-- [ ] Ensure `docker-compose up --build` works with no manual steps
+- [x] **Partial:** `docker-compose.yml` with **Postgres only** for local DB + migrations (`make db-up`, `make migrate-local`). Full stack (api, worker, LocalStack) still TODO.
+- [ ] Ensure `docker-compose up --build` works with no manual steps (full stack)
 
 ---
 

@@ -4,9 +4,11 @@
 MIGRATE := go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
 
 SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
+GQLGEN := go run github.com/99designs/gqlgen@v0.17.81
 
 generate:
 	$(SQLC) generate
+	$(GQLGEN) generate
 
 # Matches docker-compose.yml (postgres service). Use after: make db-up
 DATABASE_URL_LOCAL ?= postgres://plateful:plateful@127.0.0.1:5432/plateful?sslmode=disable

@@ -1,0 +1,42 @@
+scalar Time
+
+type Order {
+  id: ID!
+  status: OrderStatus!
+  createdAt: Time!
+  updatedAt: Time!
+  customerName: String
+  notes: String
+  totalAmount: String
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+input CreateOrderInput {
+  customerName: String
+  notes: String
+  totalAmount: String
+}
+
+input OrdersFilter {
+  status: OrderStatus
+  createdFrom: Time
+  createdTo: Time
+}
+
+type Query {
+  order(id: ID!): Order
+  orders(filter: OrdersFilter): [Order!]!
+}
+
+type Mutation {
+  createOrder(input: CreateOrderInput!): Order!
+  updateOrderStatus(id: ID!, status: OrderStatus!): Order!
+}

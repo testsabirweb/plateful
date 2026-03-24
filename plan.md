@@ -253,14 +253,14 @@ const (
 
 ### TODO
 
-- [ ] Initialize gqlgen
-- [ ] Define `schema.graphqls`
-- [ ] Run `go run github.com/99designs/gqlgen generate`
+- [x] Initialize gqlgen (`gqlgen.yml`, `github.com/99designs/gqlgen`)
+- [x] Define `internal/graph/schema.graphqls`
+- [x] Run `go run github.com/99designs/gqlgen generate` (also `make generate`)
+- [x] HTTP + playground: `cmd/api` serves `/` (GraphQL Playground) and `/query`; requires `DATABASE_URL`
 
 ### Resolver design
 
-- Keep resolvers thin: validate input → call service → return result
-- Map domain → GraphQL types
+- Resolvers call `internal/store` + `orders.ValidateTransition` for status changes; mapping in `internal/graph/mappers.go`
 
 ---
 

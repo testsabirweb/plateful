@@ -1,11 +1,27 @@
-.PHONY: build test run-api run-worker migrate-up migrate-down
+.PHONY: build test run-api run-worker migrate-up migrate-down db-up db-down migrate-local
 
-# golang-migrate CLI via go run (postgres driver). Requires DATABASE_URL, e.g.:
-#   postgres://user:pass@localhost:5432/dbname?sslmode=disable
+# golang-migrate CLI via go run (postgres driver).
 MIGRATE := go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
 
+# Matches docker-compose.yml (postgres service). Use after: make db-up
+DATABASE_URL_LOCAL ?= postgres://plateful:plateful@127.0.0.1:5432/plateful?sslmode=disable
+
+# Start local Postgres (Docker). Then: make migrate-local  OR  export DATABASE_URL and make migrate-up
+db-up:
+	docker compose up -d postgres
+	@echo "Waiting for Postgres..."
+	@until docker compose exec -T postgres pg_isready -U plateful -d plateful >/dev/null 2>&1; do sleep 1; done
+	@echo "Ready. Example: export DATABASE_URL='$(DATABASE_URL_LOCAL)' && make migrate-up"
+
+db-down:
+	docker compose down
+
+# Apply migrations using DATABASE_URL_LOCAL (no export needed)
+migrate-local:
+	$(MIGRATE) -path db/migrations -database "$(DATABASE_URL_LOCAL)" up
+
 migrate-up:
-	@test -n "$(DATABASE_URL)" || (echo "DATABASE_URL is required" && false)
+	@test -n "$(DATABASE_URL)" || (echo "DATABASE_URL is required (or run: make db-up && make migrate-local)" && false)
 	$(MIGRATE) -path db/migrations -database "$(DATABASE_URL)" up
 
 migrate-down:

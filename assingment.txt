@@ -1,0 +1,46 @@
+Golang + DevOps - Take Home Assignment
+**Time budget:** 24 to 48 hours (we respect your time, scope accordingly and document what you'd
+improve with more time)
+The Scenario
+You're building a small backend service for a catering company. Restaurants receive orders that need
+to be processed, validated, and tracked. Your job is to build the core backend and package it for
+deployment.
+Requirements
+**Part 1: Golang Backend Service**
+Build a GraphQL API (using gqlgen or similar) with the following:
+**Mutations:** createOrder(input), updateOrderStatus(id, status)
+**Queries:** order(id), orders(filter) with filtering by status and date range
+Store data in PostgreSQL using **sqlc** for type-safe query generation and **golang-migrate** (or
+similar) for schema migrations
+Order statuses flow: pending > confirmed > preparing > ready > delivered > cancelled
+Validate state transitions (e.g., can't go from delivered back to pending)
+⠀
+**Part 2: Async Processing (Simulated SQS)**
+When an order is created, publish an event to a message queue
+Implement a worker/consumer that picks up the event and performs a simulated action (e.g.,
+send a notification, update an analytics counter)
+Use a local stand-in for SQS (a Go channel, an in-memory queue, or LocalStack) to demonstrate
+the pattern
+⠀
+**Part 3: Infrastructure & DevOps**
+Provide a Dockerfile and docker-compose.yml that spins up the API + Postgres + queue with one
+command
+Write a **Terraform module** (doesn't need to apply) that would provision: an ECS service, an SQS
+queue, and a PostgreSQL RDS instance. Include comments explaining your choices.
+Include a basic CI pipeline config (GitHub Actions preferred) that runs tests, generates sqlc
+output, and builds the Docker image
+⠀
+**Part 4: Testing & Observability**
+Write unit tests for the state-transition logic and at least one integration test for the GraphQL
+API
+Add structured logging (e.g., slog or zerolog) and basic metrics (request count, latency). Just
+instrument them, no need for a full Grafana setup.
+Submission
+GitHub repo (public or private invite)
+README.md with: setup instructions, architecture decisions, trade-offs, and a "what I'd add with
+more time" section
+The repo should be runnable with docker-compose up and testable with go test ./...
+Bonus (only if you have time)
+Add a simple rate limiter middleware
+Add a Grafana/Prometheus docker-compose extension for metrics visualization
+Implement batch query support in the GraphQL layer using dataloaders

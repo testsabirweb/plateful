@@ -193,7 +193,7 @@ WHERE id = $id AND status = $current
 
 ### TODO
 
-- [ ] Define type and constants:
+- [x] Define type and constants (`internal/orders/status.go`)
 
 ```go
 type Status string
@@ -208,10 +208,11 @@ const (
 )
 ```
 
-- [ ] Implement transition map: `map[Status][]Status`
-- [ ] Implement:
+- [x] Implement transition map: `map[Status][]Status`
+- [x] Implement:
   - `CanTransition(from, to)`
   - `ValidateTransition(from, to)`
+  - Helpers: `ParseStatus`, `IsKnown`, `IsTerminal`
 
 ### Rules
 
@@ -222,7 +223,7 @@ const (
 
 ### Tests
 
-- [ ] Table-driven unit tests covering:
+- [x] Table-driven unit tests covering:
   - Valid transitions
   - Invalid transitions
   - Terminal states

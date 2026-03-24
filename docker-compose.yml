@@ -12,3 +12,12 @@ services:
       interval: 2s
       timeout: 5s
       retries: 15
+
+  # SQS-compatible API for async order events (see plan §6). Use SQS_ENDPOINT=http://localhost:4566 from the host.
+  localstack:
+    image: localstack/localstack:3.0
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sqs
+      DEBUG: "0"

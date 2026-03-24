@@ -286,20 +286,20 @@ type Queue interface {
 
 ### TODO — API
 
-- [ ] On `createOrder`: insert into DB, then publish event to queue
+- [x] On `createOrder`: insert into DB, then publish event to queue (`internal/queue`, `SQS_ENDPOINT` or no-op)
 
 ### TODO — worker
 
-- [ ] Poll queue
-- [ ] Process message: simulated action — e.g. log “notification sent”, **or** update an analytics counter (per brief)
-- [ ] Delete message after success
+- [x] Poll queue (`internal/queue.SQSClient.ReceiveLoop` → long-poll SQS)
+- [x] Process message: simulated action — log “simulated notification” + atomic **events_processed** counter
+- [x] Delete message after success
 
 ### Implementation options
 
 | Option | Notes |
 |--------|--------|
-| **Preferred** | LocalStack (SQS) |
-| **Fallback** | In-memory Go channel |
+| **Preferred** | LocalStack (SQS) — `SQS_ENDPOINT` (e.g. `http://localhost:4566`), `SQS_QUEUE_NAME` |
+| **Fallback** | API uses `NoOpPublisher` when `SQS_ENDPOINT` unset |
 
 ---
 
@@ -315,7 +315,7 @@ type Queue interface {
 ### TODO
 
 - [ ] Write Dockerfile: multi-stage build, small final image
-- [x] **Partial:** `docker-compose.yml` with **Postgres only** for local DB + migrations (`make db-up`, `make migrate-local`). Full stack (api, worker, LocalStack) still TODO.
+- [x] **Partial:** `docker-compose.yml` — **Postgres** (DB + migrations) and **LocalStack** (`SERVICES=sqs`, port 4566). Full stack (api + worker images) still TODO.
 - [ ] Ensure `docker-compose up --build` works with no manual steps (full stack)
 
 ---

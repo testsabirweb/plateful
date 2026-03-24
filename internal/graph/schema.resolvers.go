@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/testsabirweb/plateful/internal/graph/model"
 	"github.com/testsabirweb/plateful/internal/orders"
@@ -33,6 +34,14 @@ func (r *mutationResolver) CreateOrder(ctx context.Context, input model.CreateOr
 	})
 	if err != nil {
 		return nil, err
+	}
+	if r.Queue != nil {
+		if !o.ID.Valid {
+			return nil, fmt.Errorf("order missing id after insert")
+		}
+		if err := r.Queue.PublishOrderCreated(ctx, uuid.UUID(o.ID.Bytes)); err != nil {
+			return nil, fmt.Errorf("queue publish: %w", err)
+		}
 	}
 	return orderToGQL(o)
 }

@@ -341,9 +341,9 @@ type Queue interface {
 
 ### TODO
 
-- [ ] Write Dockerfile: multi-stage build, small final image
-- [x] **Partial:** `docker-compose.yml` — **Postgres** (DB + migrations) and **LocalStack** (`SERVICES=sqs`, port 4566). Full stack (api + worker images) still TODO.
-- [ ] Ensure `docker-compose up --build` works with no manual steps (full stack)
+- [x] Dockerfile: multi-stage build, targets `api` and `worker` (`Dockerfile`)
+- [x] `docker-compose.yml` — **postgres**, **localstack**, **migrate** (one-shot `golang-migrate` image), **api**, **worker**; `docker compose up --build -d` brings up the stack (migrations run before api/worker)
+- [x] Single-command local stack (see `docker compose up --build`)
 
 ---
 
@@ -362,10 +362,11 @@ Create a **non-applied** module that shows infra design.
 
 ### TODO
 
-- [ ] Create module: `infra/terraform/modules/catering-service/`
-- [ ] Add variables: `vpc_id`, `subnet_ids`, `image`, DB config
-- [ ] Add outputs: `queue_url`, `service_name`
-- [ ] Add comments: design decisions, trade-offs, what’s omitted (ALB, IAM, etc.)
+- [x] Create module: `infra/terraform/modules/catering-service/`
+- [x] Variables: subnets, SGs, container image, DB password, ECS IAM role ARNs (see `variables.tf`)
+- [x] Outputs: `queue_url`, `ecs_service_name`, `rds_endpoint`, etc. (`outputs.tf`)
+- [x] Comments in `main.tf` on omissions (ALB, IAM details, etc.)
+- [x] `ci.auto.tfvars` — dummy values so `terraform validate` succeeds in CI (do not use for real apply)
 
 ---
 
@@ -373,7 +374,7 @@ Create a **non-applied** module that shows infra design.
 
 ### TODO
 
-- [ ] Create `.github/workflows/ci.yml`
+- [x] Create `.github/workflows/ci.yml`
 
 ### Steps
 
@@ -489,11 +490,11 @@ Quick mapping to the take-home brief (Parts 1–4):
 
 ## Definition of done
 
-- [ ] `docker-compose up` works
-- [ ] API is accessible
-- [ ] GraphQL operations work end-to-end
-- [ ] State transitions validated
-- [ ] Worker processes events
-- [ ] Tests pass
-- [ ] CI passes
+- [x] `docker compose up --build` starts Postgres, LocalStack, migrate, api, worker
+- [ ] API verified manually / integration test (§11)
+- [ ] GraphQL operations work end-to-end in CI or manual check
+- [x] State transitions validated (domain tests)
+- [x] Worker processes events (with LocalStack + SQS in compose)
+- [x] `go test ./...` passes locally
+- [x] CI workflow exists (Go + codegen drift check + Docker build + Terraform fmt/validate)
 - [ ] README is clear and complete

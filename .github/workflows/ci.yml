@@ -1,0 +1,45 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - run: go test ./...
+
+      - name: Regenerate sqlc
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate
+
+      - name: Regenerate gqlgen
+        run: go run github.com/99designs/gqlgen@v0.17.81 generate
+
+      - name: Ensure generated code is committed
+        run: git diff --exit-code
+
+      - name: Docker build (api target)
+        run: docker build -f Dockerfile --target api .
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: terraform validate
+        working-directory: infra/terraform/modules/catering-service
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate

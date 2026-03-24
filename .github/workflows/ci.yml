@@ -5,6 +5,7 @@ on: [push, pull_request]
 jobs:
   go:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -12,7 +13,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - run: go test ./...
+      - name: Go test (includes Testcontainers integration test)
+        run: go test ./... -count=1 -timeout 15m
 
       - name: Regenerate sqlc
         run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate

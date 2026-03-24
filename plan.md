@@ -40,7 +40,7 @@ After each implementation step: **commit** the changes, then **update this file*
 | `internal/store/sqlc/` or `db/sqlc/` | `internal/store/db` (package `storedb`) | Driven by `sqlc.yaml` `out` |
 | `memory` queue + SQS | `Publisher` + **`SQSClient`** + **`NoOpPublisher`** | In-memory **channel** queue not added yet—optional for tests without LocalStack |
 | `docker/localstack/ready.d/*.sh` | **Not used** | Queue ensured in Go (`ensureQueueURL`)—avoid duplicate init paths |
-| `internal/observability/*` | **Removed empty stub** | `slog` lives in `cmd/*`; add `internal/observability` in §10 when wiring Prometheus |
+| `internal/observability/*` | **`http.go`** — Prometheus + HTTP middleware | `slog` still in `cmd/*`; metrics in §10 |
 | `internal/orders/service.go` | **Not used** | Resolvers call `store` + `orders` directly—fine for scope; extract service if logic grows |
 
 **Makefile / commands:** targets are all intentional—there is no stray `make` entry. `migrate-down` rolls back **one** migration (occasional use). `make generate` runs **sqlc + gqlgen** together so CI matches local dev.
@@ -393,13 +393,14 @@ Per brief: run tests, generate **sqlc** output, build Docker image. Recommended 
 
 ### Logging
 
-- Use `slog` or `zerolog`
-- Add: request logs, error logs, worker logs
+- [x] `slog` (stderr) in `cmd/api`, `cmd/worker`
+- [x] HTTP access logs via `internal/observability.HTTPMiddleware` (method, path, status, duration_ms)
+- [x] Worker logs include `component=worker`
 
 ### Metrics
 
-- Add: request count, request latency
-- Expose: `/metrics`
+- [x] `http_requests_total`, `http_request_duration_seconds` (Prometheus)
+- [x] `GET /metrics` (`promhttp`)
 - Assignment: instrument metrics; **no** full Grafana setup required here (see [bonus](#13-bonus-optional) for Grafana/Prometheus add-on).
 
 ---
@@ -408,21 +409,20 @@ Per brief: run tests, generate **sqlc** output, build Docker image. Recommended 
 
 ### Unit tests
 
-- State transition logic
+- [x] State transition logic (`internal/orders`)
 
 ### Integration test
 
 Assignment: **at least one** integration test for the GraphQL API (plus unit tests for state-transition logic — see [section 4](#4-domain-logic-state-machine)).
 
-- Spin up Postgres (Testcontainers preferred)
-- Apply migrations
-- Start API
-- Run GraphQL: `createOrder`, fetch order
+- [x] Postgres via **Testcontainers** (`postgres:16-alpine`)
+- [x] **golang-migrate** applied from `db/migrations`
+- [x] gqlgen handler in **httptest** — `createOrder`, then `order(id)` query
 
 ### TODO
 
-- [ ] Keep tests minimal but realistic
-- [ ] Ensure `go test ./...` runs cleanly
+- [x] Minimal integration test (`internal/graph/integration_test.go`); skipped when `go test -short`
+- [x] `go test ./...` (with Docker) and `go test -short ./...` (without integration)
 
 ---
 
@@ -430,11 +430,11 @@ Assignment: **at least one** integration test for the GraphQL API (plus unit tes
 
 ### Must include
 
-- Setup instructions
-- How to run: `docker-compose up`
-- How to test: `go test ./...`
-- Architecture explanation
-- Design decisions and trade-offs
+- [x] Setup instructions (`README.md`)
+- [x] How to run: `docker compose up --build`
+- [x] How to test: `go test ./...`
+- [x] Architecture explanation
+- [x] Design decisions and trade-offs
 
 ### Demo section
 
@@ -491,10 +491,10 @@ Quick mapping to the take-home brief (Parts 1–4):
 ## Definition of done
 
 - [x] `docker compose up --build` starts Postgres, LocalStack, migrate, api, worker
-- [ ] API verified manually / integration test (§11)
-- [ ] GraphQL operations work end-to-end in CI or manual check
+- [x] GraphQL integration test (Testcontainers) + unit tests
+- [x] GraphQL operations work end-to-end (integration test + manual compose)
 - [x] State transitions validated (domain tests)
 - [x] Worker processes events (with LocalStack + SQS in compose)
-- [x] `go test ./...` passes locally
+- [x] `go test ./...` passes (Docker for integration); `go test -short` without integration
 - [x] CI workflow exists (Go + codegen drift check + Docker build + Terraform fmt/validate)
-- [ ] README is clear and complete
+- [x] README is clear and complete

@@ -38,7 +38,7 @@ func main() {
 	}
 
 	var processed atomic.Uint64
-	slog.Info("worker consuming", "queue_url", client.QueueURL())
+	slog.Info("worker consuming", "component", "worker", "queue_url", client.QueueURL())
 
 	err = client.ReceiveLoop(ctx, func(ctx context.Context, e queue.Event) error {
 		if e.Type != queue.EventTypeOrderCreated {
@@ -46,7 +46,7 @@ func main() {
 			return nil
 		}
 		n := processed.Add(1)
-		slog.Info("simulated notification", "order_id", e.OrderID, "events_processed", n)
+		slog.Info("simulated notification", "component", "worker", "order_id", e.OrderID, "events_processed", n)
 		return nil
 	})
 	if err != nil && !errors.Is(err, context.Canceled) {

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testsabirweb/plateful/internal/config"
 	"github.com/testsabirweb/plateful/internal/graph"
+	"github.com/testsabirweb/plateful/internal/observability"
 	"github.com/testsabirweb/plateful/internal/queue"
 	"github.com/testsabirweb/plateful/internal/store"
 )
@@ -57,11 +58,14 @@ func main() {
 		},
 	}))
 
-	http.Handle("/", playground.Handler("Plateful API", "/query"))
-	http.Handle("/query", srv)
+	log := slog.Default()
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", observability.MetricsHandler())
+	mux.Handle("/", observability.HTTPMiddleware(log, playground.Handler("Plateful API", "/query")))
+	mux.Handle("/query", observability.HTTPMiddleware(log, srv))
 
-	slog.Info("api listening", "addr", cfg.HTTPAddr, "playground", "/", "graphql", "/query", "sqs", cfg.SQSEnabled())
-	if err := http.ListenAndServe(cfg.HTTPAddr, nil); err != nil {
+	slog.Info("api listening", "addr", cfg.HTTPAddr, "playground", "/", "graphql", "/query", "metrics", "/metrics", "sqs", cfg.SQSEnabled())
+	if err := http.ListenAndServe(cfg.HTTPAddr, mux); err != nil {
 		slog.Error("http server", "err", err)
 		os.Exit(1)
 	}

@@ -1,7 +1,12 @@
-.PHONY: build test run-api run-worker migrate-up migrate-down db-up db-down migrate-local
+.PHONY: build test run-api run-worker migrate-up migrate-down db-up db-down migrate-local generate
 
 # golang-migrate CLI via go run (postgres driver).
 MIGRATE := go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
+
+SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
+
+generate:
+	$(SQLC) generate
 
 # Matches docker-compose.yml (postgres service). Use after: make db-up
 DATABASE_URL_LOCAL ?= postgres://plateful:plateful@127.0.0.1:5432/plateful?sslmode=disable

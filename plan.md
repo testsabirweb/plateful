@@ -21,6 +21,30 @@ The goal is to deliver a **production-grade, minimal but well-structured system*
 
 After each implementation step: **commit** the changes, then **update this file** — check off completed TODOs (and add short notes where something was deferred or done out of order).
 
+### Research notes (`deep-research-report.md`)
+
+[`deep-research-report.md`](deep-research-report.md) is **supplementary** (tooling rationale, citations, alternative DDL sketches). **`plan.md` is the canonical checklist** for this repo. Where they differ, what is implemented in the tree wins; the table below records deliberate choices.
+
+| Topic | Locked in this repo |
+|-------|---------------------|
+| HTTP / GraphQL | `HTTP_ADDR` (default `:8080`); GraphQL POST **`/query`**; Playground **`/`** |
+| Metrics (§10) | **`/metrics`** when Prometheus is added |
+| Postgres | **`postgres:16-alpine`** in Compose |
+| Order IDs | **UUID** (`gen_random_uuid()` on PG 16+) |
+| GraphQL `Time` | **`time.Time`** via gqlgen `graphql.Time` |
+| AWS / LocalStack | **`us-east-1`** default in config for SDK |
+
+| Research suggestion | This repo | Notes |
+|---------------------|-----------|--------|
+| Top-level `graph/` + `generated/` | `internal/graph/` (`generated.go`, `model/`, resolvers) | Same pattern; `internal/` keeps app packages import-private |
+| `internal/store/sqlc/` or `db/sqlc/` | `internal/store/db` (package `storedb`) | Driven by `sqlc.yaml` `out` |
+| `memory` queue + SQS | `Publisher` + **`SQSClient`** + **`NoOpPublisher`** | In-memory **channel** queue not added yet—optional for tests without LocalStack |
+| `docker/localstack/ready.d/*.sh` | **Not used** | Queue ensured in Go (`ensureQueueURL`)—avoid duplicate init paths |
+| `internal/observability/*` | **Removed empty stub** | `slog` lives in `cmd/*`; add `internal/observability` in §10 when wiring Prometheus |
+| `internal/orders/service.go` | **Not used** | Resolvers call `store` + `orders` directly—fine for scope; extract service if logic grows |
+
+**Makefile / commands:** targets are all intentional—there is no stray `make` entry. `migrate-down` rolls back **one** migration (occasional use). `make generate` runs **sqlc + gqlgen** together so CI matches local dev.
+
 ---
 
 ## Table of contents
@@ -69,25 +93,28 @@ After each implementation step: **commit** the changes, then **update this file*
 
 ## 1. Project setup
 
-### Target layout
+### Target layout (actual)
 
 ```
 cmd/
   api/
   worker/
 internal/
-  orders/
-  store/
-  queue/
-  observability/
   config/
-  graph/
+  graph/          # schema.graphqls, gqlgen generated, resolvers, mappers
+  orders/         # status + transitions
+  queue/          # Publisher, SQS, events
+  store/          # repository; store/db = sqlc output
 db/
   migrations/
   query/
 infra/
   terraform/
+gqlgen.yml
+sqlc.yaml
 ```
+
+(`internal/observability/` appears in older sketches; we **do not** keep an empty package—§10 adds metrics/logging helpers when implemented.)
 
 ### TODO
 

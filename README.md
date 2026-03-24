@@ -52,7 +52,7 @@ make generate   # sqlc + gqlgen
 ## Tests
 
 ```bash
-go test ./... -count=1
+make test    # go vet + go test (15m timeout; needs Docker for integration)
 ```
 
 The suite includes a **GraphQL integration test** (`internal/graph/integration_test.go`) that starts Postgres in Docker via **Testcontainers**. **Docker must be running** for the default suite to pass.
@@ -62,6 +62,8 @@ Fast checks only (skip integration):
 ```bash
 go test -short ./... -count=1
 ```
+
+To tear down the compose stack: `make compose-down`.
 
 ## Architecture (short)
 

@@ -43,7 +43,7 @@ After each implementation step: **commit** the changes, then **update this file*
 | `internal/observability/*` | **`http.go`** — Prometheus + HTTP middleware | `slog` still in `cmd/*`; metrics in §10 |
 | `internal/orders/service.go` | **Not used** | Resolvers call `store` + `orders` directly—fine for scope; extract service if logic grows |
 
-**Makefile / commands:** targets are all intentional—there is no stray `make` entry. `migrate-down` rolls back **one** migration (occasional use). `make generate` runs **sqlc + gqlgen** together so CI matches local dev.
+**Makefile / commands:** `make test` runs `go vet` then `go test` (15m timeout for Testcontainers). `compose-down` stops the full compose stack (replaces the old `db-down` alias). `migrate-down` rolls back **one** migration. `make generate` runs **sqlc + gqlgen** (same as CI).
 
 ---
 

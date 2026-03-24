@@ -2,6 +2,5 @@
 .github
 bin
 *.md
-!README.md
 .cursor
 **/*_test.go

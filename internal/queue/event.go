@@ -1,6 +1,11 @@
 package queue
 
-import "encoding/json"
+import (
+	"context"
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 // EventTypeOrderCreated is published after an order row is inserted.
 const EventTypeOrderCreated = "OrderCreated"
@@ -9,6 +14,11 @@ const EventTypeOrderCreated = "OrderCreated"
 type Event struct {
 	Type    string `json:"type"`
 	OrderID string `json:"orderId"`
+}
+
+// Publisher sends order lifecycle events to an async consumer.
+type Publisher interface {
+	PublishOrderCreated(ctx context.Context, orderID uuid.UUID) error
 }
 
 // MarshalJSONEvent returns the canonical JSON body for SQS SendMessage.

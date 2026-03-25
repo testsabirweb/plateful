@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: plateful
       POSTGRES_PASSWORD: plateful
       POSTGRES_DB: plateful
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U plateful -d plateful"]
       interval: 2s
@@ -103,3 +105,7 @@ services:
       - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
+
+volumes:
+  # Postgres data survives `docker compose down`; use `docker compose down -v` to wipe DB.
+  postgres_data:

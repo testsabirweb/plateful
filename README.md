@@ -15,6 +15,8 @@ docker compose up --build
 
 This starts all services. The first run takes a minute — LocalStack needs ~15s to become healthy before the API and worker start.
 
+PostgreSQL data is stored in a **named Docker volume** (`postgres_data`), so it survives `docker compose down` and comes back after the next `up`. To remove the database as well, run `docker compose down -v` (or `docker volume rm plateful_postgres_data` with your project’s volume name from `docker volume ls`).
+
 ## Services & endpoints
 
 | Service | URL | Notes |

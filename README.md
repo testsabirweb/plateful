@@ -115,6 +115,94 @@ mutation {
 
 **Invalid transition** (e.g. `DELIVERED` → `PENDING`) returns a GraphQL error with the underlying validation message.
 
+## curl examples
+
+All requests go to `POST http://localhost:8080/query`. Make sure the stack is running first (`docker compose up --build -d`).
+
+**Capture the order ID in a variable (recommended starting point)**
+
+```bash
+ORDER_ID=$(curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d ‘{"query":"mutation { createOrder(input: { customerName: \"Alice\", notes: \"VIP table\", totalAmount: \"129.99\" }) { id status customerName notes totalAmount createdAt } }"}’ \
+  | jq -r ‘.data.createOrder.id’)
+
+echo "Created order: $ORDER_ID"
+```
+
+**Get a single order**
+
+```bash
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"{ order(id: \\\"$ORDER_ID\\\") { id status customerName notes totalAmount createdAt } }\"}" | jq
+```
+
+**List all orders**
+
+```bash
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d ‘{"query":"{ orders { id status customerName totalAmount createdAt } }"}’ | jq
+```
+
+**List orders filtered by status**
+
+```bash
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d ‘{"query":"{ orders(filter: { status: PENDING }) { id status customerName } }"}’ | jq
+```
+
+**Walk through the status machine**
+
+```bash
+# pending → confirmed
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"mutation { updateOrderStatus(id: \\\"$ORDER_ID\\\", status: CONFIRMED) { id status } }\"}" | jq
+
+# confirmed → preparing
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"mutation { updateOrderStatus(id: \\\"$ORDER_ID\\\", status: PREPARING) { id status } }\"}" | jq
+
+# preparing → ready
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"mutation { updateOrderStatus(id: \\\"$ORDER_ID\\\", status: READY) { id status } }\"}" | jq
+
+# ready → delivered
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"mutation { updateOrderStatus(id: \\\"$ORDER_ID\\\", status: DELIVERED) { id status } }\"}" | jq
+```
+
+**Cancel an order** (valid from any non-terminal state)
+
+```bash
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"mutation { updateOrderStatus(id: \\\"$ORDER_ID\\\", status: CANCELLED) { id status } }\"}" | jq
+```
+
+**Trigger an invalid transition** (should return a GraphQL error)
+
+```bash
+# e.g. try to go delivered → pending after delivery
+curl -s -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"mutation { updateOrderStatus(id: \\\"$ORDER_ID\\\", status: PENDING) { id status } }\"}" | jq
+```
+
+**Check Prometheus metrics**
+
+```bash
+curl -s http://localhost:8080/metrics | grep http_requests
+```
+
+---
+
 ## What I’d add with more time
 
 - **Retries & DLQ** for queue consumers; **outbox** or transactional publish for exactly-once semantics with the DB.

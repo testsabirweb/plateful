@@ -463,9 +463,9 @@ Example GraphQL queries:
 
 ### TODO
 
-- [ ] Rate limiter middleware
-- [ ] Prometheus + Grafana (docker-compose)
-- [ ] GraphQL dataloaders (batching)
+- [x] Rate limiter middleware
+- [x] Prometheus + Grafana (docker-compose)
+- [x] GraphQL dataloaders (batching)
 
 ---
 

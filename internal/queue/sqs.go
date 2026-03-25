@@ -2,13 +2,14 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/google/uuid"
 )
 
@@ -84,11 +85,8 @@ func ensureQueueURL(ctx context.Context, api *sqs.Client, name string) (string, 
 }
 
 func isQueueExistsErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	s := err.Error()
-	return strings.Contains(s, "QueueAlreadyExists") || strings.Contains(s, "already exists")
+	var e *types.QueueNameExists
+	return errors.As(err, &e)
 }
 
 // PublishOrderCreated implements Publisher.

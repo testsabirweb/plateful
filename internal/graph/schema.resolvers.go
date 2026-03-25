@@ -92,6 +92,10 @@ func (r *queryResolver) Order(ctx context.Context, id string) (*model.Order, err
 	if r.Store == nil {
 		return nil, fmt.Errorf("store not configured")
 	}
+	if loaders := loadersFromCtx(ctx); loaders != nil {
+		return loaders.OrderByID.Load(ctx, id)
+	}
+	// Fallback for contexts without the dataloader middleware (e.g. tests).
 	pgid, err := parseUUID(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid id: %w", err)

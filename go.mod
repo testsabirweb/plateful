@@ -14,6 +14,8 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.41.0
 	github.com/vektah/gqlparser/v2 v2.5.30
+	github.com/vikstrous/dataloadgen v0.0.10
+	golang.org/x/time v0.15.0
 )
 
 require (

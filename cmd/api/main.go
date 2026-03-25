@@ -13,6 +13,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/time/rate"
 	"github.com/testsabirweb/plateful/internal/config"
 	"github.com/testsabirweb/plateful/internal/graph"
 	"github.com/testsabirweb/plateful/internal/observability"
@@ -56,9 +57,10 @@ func main() {
 		slog.Info("sqs publisher ready", "queue_url", sqsClient.QueueURL())
 	}
 
+	st := store.New(pool)
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
 		Resolvers: &graph.Resolver{
-			Store: store.New(pool),
+			Store: st,
 			Queue: pub,
 		},
 	}))
@@ -67,9 +69,11 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", observability.MetricsHandler())
 	mux.Handle("/", observability.HTTPMiddleware(log, playground.Handler("Plateful API", "/query")))
-	mux.Handle("/query", observability.HTTPMiddleware(log, srv))
+	mux.Handle("/query", observability.HTTPMiddleware(log, graph.DataloaderMiddleware(st, srv)))
 
-	httpSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: mux}
+	// 10 requests/sec per IP, burst of 30.
+	rl := observability.NewRateLimiter(rate.Limit(10), 30)
+	httpSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: rl.Middleware(mux)}
 
 	go func() {
 		<-ctx.Done()

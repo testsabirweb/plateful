@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/vikstrous/dataloadgen"
 	"github.com/testsabirweb/plateful/internal/graph/model"
 	"github.com/testsabirweb/plateful/internal/store"
+	"github.com/vikstrous/dataloadgen"
 )
 
 type contextKey string

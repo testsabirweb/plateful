@@ -149,7 +149,9 @@ func TestIntegration_OrdersFilterByStatus(t *testing.T) {
 	}
 	var outA struct {
 		Data struct {
-			CreateOrder struct{ ID string `json:"id"` } `json:"createOrder"`
+			CreateOrder struct {
+				ID string `json:"id"`
+			} `json:"createOrder"`
 		} `json:"data"`
 	}
 	_ = json.Unmarshal(a, &outA)
@@ -161,7 +163,9 @@ func TestIntegration_OrdersFilterByStatus(t *testing.T) {
 	}
 	var outB struct {
 		Data struct {
-			CreateOrder struct{ ID string `json:"id"` } `json:"createOrder"`
+			CreateOrder struct {
+				ID string `json:"id"`
+			} `json:"createOrder"`
 		} `json:"data"`
 	}
 	_ = json.Unmarshal(b, &outB)
@@ -231,7 +235,9 @@ func TestIntegration_OrdersFilterByCreatedRange(t *testing.T) {
 	}
 	var inRange struct {
 		Data struct {
-			Orders []struct{ ID string `json:"id"` } `json:"orders"`
+			Orders []struct {
+				ID string `json:"id"`
+			} `json:"orders"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &inRange); err != nil {
@@ -261,7 +267,9 @@ func TestIntegration_OrdersFilterByCreatedRange(t *testing.T) {
 	}
 	var emptyRange struct {
 		Data struct {
-			Orders []struct{ ID string `json:"id"` } `json:"orders"`
+			Orders []struct {
+				ID string `json:"id"`
+			} `json:"orders"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body2, &emptyRange); err != nil {

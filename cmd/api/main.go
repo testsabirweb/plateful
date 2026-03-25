@@ -13,12 +13,12 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"golang.org/x/time/rate"
 	"github.com/testsabirweb/plateful/internal/config"
 	"github.com/testsabirweb/plateful/internal/graph"
 	"github.com/testsabirweb/plateful/internal/observability"
 	"github.com/testsabirweb/plateful/internal/queue"
 	"github.com/testsabirweb/plateful/internal/store"
+	"golang.org/x/time/rate"
 )
 
 func main() {

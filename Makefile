@@ -1,4 +1,4 @@
-.PHONY: build test run-api run-worker migrate-up migrate-down db-up compose-down migrate-local generate
+.PHONY: build test run-api run-worker migrate-up migrate-down db-up compose-down migrate-local generate tidy fmt lint
 
 # golang-migrate CLI (version aligned with go.mod github.com/golang-migrate/migrate/v4).
 MIGRATE := go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1
@@ -39,6 +39,15 @@ migrate-down:
 build:
 	go build -o bin/api ./cmd/api
 	go build -o bin/worker ./cmd/worker
+
+tidy:
+	go mod tidy
+
+fmt:
+	go fmt ./...
+
+lint: fmt
+	go vet ./...
 
 test:
 	go vet ./...

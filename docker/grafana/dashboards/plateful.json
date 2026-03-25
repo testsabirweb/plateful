@@ -2,6 +2,7 @@
   "title": "Plateful API",
   "uid": "plateful-api",
   "schemaVersion": 39,
+  "version": 1,
   "refresh": "10s",
   "time": { "from": "now-15m", "to": "now" },
   "panels": [
@@ -10,9 +11,11 @@
       "title": "Request Rate (req/s)",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "datasource": "Prometheus",
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "sum(rate(http_requests_total[1m])) by (path, method)",
           "legendFormat": "{{method}} {{path}}"
         }
@@ -23,9 +26,11 @@
       "title": "Request Rate by Status Code",
       "type": "timeseries",
       "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "datasource": "Prometheus",
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "sum(rate(http_requests_total[1m])) by (code)",
           "legendFormat": "HTTP {{code}}"
         }
@@ -36,19 +41,23 @@
       "title": "Latency P50 / P95 / P99 (seconds)",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "datasource": "Prometheus",
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[1m])) by (le, path))",
           "legendFormat": "p50 {{path}}"
         },
         {
-          "datasource": "Prometheus",
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le, path))",
           "legendFormat": "p95 {{path}}"
         },
         {
-          "datasource": "Prometheus",
+          "refId": "C",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[1m])) by (le, path))",
           "legendFormat": "p99 {{path}}"
         }
@@ -59,9 +68,11 @@
       "title": "Total Requests",
       "type": "stat",
       "gridPos": { "x": 0, "y": 16, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "datasource": "Prometheus",
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "sum(http_requests_total)",
           "legendFormat": "total"
         }
@@ -72,9 +83,11 @@
       "title": "Error Rate (4xx + 5xx)",
       "type": "stat",
       "gridPos": { "x": 6, "y": 16, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "datasource": "Prometheus",
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "sum(rate(http_requests_total{code=~\"4..|5..\"}[5m]))",
           "legendFormat": "errors/s"
         }

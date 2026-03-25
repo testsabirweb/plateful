@@ -21,6 +21,30 @@ The goal is to deliver a **production-grade, minimal but well-structured system*
 
 After each implementation step: **commit** the changes, then **update this file** — check off completed TODOs (and add short notes where something was deferred or done out of order).
 
+### Research notes (`deep-research-report.md`)
+
+[`deep-research-report.md`](deep-research-report.md) is **supplementary** (tooling rationale, citations, alternative DDL sketches). **`plan.md` is the canonical checklist** for this repo. Where they differ, what is implemented in the tree wins; the table below records deliberate choices.
+
+| Topic | Locked in this repo |
+|-------|---------------------|
+| HTTP / GraphQL | `HTTP_ADDR` (default `:8080`); GraphQL POST **`/query`**; Playground **`/`** |
+| Metrics (§10) | **`/metrics`** when Prometheus is added |
+| Postgres | **`postgres:16-alpine`** in Compose |
+| Order IDs | **UUID** (`gen_random_uuid()` on PG 16+) |
+| GraphQL `Time` | **`time.Time`** via gqlgen `graphql.Time` |
+| AWS / LocalStack | **`us-east-1`** default in config for SDK |
+
+| Research suggestion | This repo | Notes |
+|---------------------|-----------|--------|
+| Top-level `graph/` + `generated/` | `internal/graph/` (`generated.go`, `model/`, resolvers) | Same pattern; `internal/` keeps app packages import-private |
+| `internal/store/sqlc/` or `db/sqlc/` | `internal/store/db` (package `storedb`) | Driven by `sqlc.yaml` `out` |
+| `memory` queue + SQS | `Publisher` + **`SQSClient`** + **`NoOpPublisher`** | In-memory **channel** queue not added yet—optional for tests without LocalStack |
+| `docker/localstack/ready.d/*.sh` | **Not used** | Queue ensured in Go (`ensureQueueURL`)—avoid duplicate init paths |
+| `internal/observability/*` | **`http.go`** — Prometheus + HTTP middleware | `slog` still in `cmd/*`; metrics in §10 |
+| `internal/orders/service.go` | **Not used** | Resolvers call `store` + `orders` directly—fine for scope; extract service if logic grows |
+
+**Makefile / commands:** `make test` runs `go vet` then `go test` (15m timeout for Testcontainers). `compose-down` stops the full compose stack (replaces the old `db-down` alias). `migrate-down` rolls back **one** migration. `make generate` runs **sqlc + gqlgen** (same as CI).
+
 ---
 
 ## Table of contents
@@ -69,25 +93,28 @@ After each implementation step: **commit** the changes, then **update this file*
 
 ## 1. Project setup
 
-### Target layout
+### Target layout (actual)
 
 ```
 cmd/
   api/
   worker/
 internal/
-  orders/
-  store/
-  queue/
-  observability/
   config/
-  graph/
+  graph/          # schema.graphqls, gqlgen generated, resolvers, mappers
+  orders/         # status + transitions
+  queue/          # Publisher, SQS, events
+  store/          # repository; store/db = sqlc output
 db/
   migrations/
   query/
 infra/
   terraform/
+gqlgen.yml
+sqlc.yaml
 ```
+
+(`internal/observability/` appears in older sketches; we **do not** keep an empty package—§10 adds metrics/logging helpers when implemented.)
 
 ### TODO
 
@@ -286,20 +313,20 @@ type Queue interface {
 
 ### TODO — API
 
-- [ ] On `createOrder`: insert into DB, then publish event to queue
+- [x] On `createOrder`: insert into DB, then publish event to queue (`internal/queue`, `SQS_ENDPOINT` or no-op)
 
 ### TODO — worker
 
-- [ ] Poll queue
-- [ ] Process message: simulated action — e.g. log “notification sent”, **or** update an analytics counter (per brief)
-- [ ] Delete message after success
+- [x] Poll queue (`internal/queue.SQSClient.ReceiveLoop` → long-poll SQS)
+- [x] Process message: simulated action — log “simulated notification” + atomic **events_processed** counter
+- [x] Delete message after success
 
 ### Implementation options
 
 | Option | Notes |
 |--------|--------|
-| **Preferred** | LocalStack (SQS) |
-| **Fallback** | In-memory Go channel |
+| **Preferred** | LocalStack (SQS) — `SQS_ENDPOINT` (e.g. `http://localhost:4566`), `SQS_QUEUE_NAME` |
+| **Fallback** | API uses `NoOpPublisher` when `SQS_ENDPOINT` unset |
 
 ---
 
@@ -314,9 +341,9 @@ type Queue interface {
 
 ### TODO
 
-- [ ] Write Dockerfile: multi-stage build, small final image
-- [x] **Partial:** `docker-compose.yml` with **Postgres only** for local DB + migrations (`make db-up`, `make migrate-local`). Full stack (api, worker, LocalStack) still TODO.
-- [ ] Ensure `docker-compose up --build` works with no manual steps (full stack)
+- [x] Dockerfile: multi-stage build, targets `api` and `worker` (`Dockerfile`)
+- [x] `docker-compose.yml` — **postgres**, **localstack**, **migrate** (one-shot `golang-migrate` image), **api**, **worker**; `docker compose up --build -d` brings up the stack (migrations run before api/worker)
+- [x] Single-command local stack (see `docker compose up --build`)
 
 ---
 
@@ -335,10 +362,11 @@ Create a **non-applied** module that shows infra design.
 
 ### TODO
 
-- [ ] Create module: `infra/terraform/modules/catering-service/`
-- [ ] Add variables: `vpc_id`, `subnet_ids`, `image`, DB config
-- [ ] Add outputs: `queue_url`, `service_name`
-- [ ] Add comments: design decisions, trade-offs, what’s omitted (ALB, IAM, etc.)
+- [x] Create module: `infra/terraform/modules/catering-service/`
+- [x] Variables: subnets, SGs, container image, DB password, ECS IAM role ARNs (see `variables.tf`)
+- [x] Outputs: `queue_url`, `ecs_service_name`, `rds_endpoint`, etc. (`outputs.tf`)
+- [x] Comments in `main.tf` on omissions (ALB, IAM details, etc.)
+- [x] `ci.auto.tfvars` — dummy values so `terraform validate` succeeds in CI (do not use for real apply)
 
 ---
 
@@ -346,7 +374,7 @@ Create a **non-applied** module that shows infra design.
 
 ### TODO
 
-- [ ] Create `.github/workflows/ci.yml`
+- [x] Create `.github/workflows/ci.yml`
 
 ### Steps
 
@@ -365,13 +393,14 @@ Per brief: run tests, generate **sqlc** output, build Docker image. Recommended 
 
 ### Logging
 
-- Use `slog` or `zerolog`
-- Add: request logs, error logs, worker logs
+- [x] `slog` (stderr) in `cmd/api`, `cmd/worker`
+- [x] HTTP access logs via `internal/observability.HTTPMiddleware` (method, path, status, duration_ms)
+- [x] Worker logs include `component=worker`
 
 ### Metrics
 
-- Add: request count, request latency
-- Expose: `/metrics`
+- [x] `http_requests_total`, `http_request_duration_seconds` (Prometheus)
+- [x] `GET /metrics` (`promhttp`)
 - Assignment: instrument metrics; **no** full Grafana setup required here (see [bonus](#13-bonus-optional) for Grafana/Prometheus add-on).
 
 ---
@@ -380,21 +409,20 @@ Per brief: run tests, generate **sqlc** output, build Docker image. Recommended 
 
 ### Unit tests
 
-- State transition logic
+- [x] State transition logic (`internal/orders`)
 
 ### Integration test
 
 Assignment: **at least one** integration test for the GraphQL API (plus unit tests for state-transition logic — see [section 4](#4-domain-logic-state-machine)).
 
-- Spin up Postgres (Testcontainers preferred)
-- Apply migrations
-- Start API
-- Run GraphQL: `createOrder`, fetch order
+- [x] Postgres via **Testcontainers** (`postgres:16-alpine`)
+- [x] **golang-migrate** applied from `db/migrations`
+- [x] gqlgen handler in **httptest** — `createOrder`, then `order(id)` query
 
 ### TODO
 
-- [ ] Keep tests minimal but realistic
-- [ ] Ensure `go test ./...` runs cleanly
+- [x] Minimal integration test (`internal/graph/integration_test.go`); skipped when `go test -short`
+- [x] `go test ./...` (with Docker) and `go test -short ./...` (without integration)
 
 ---
 
@@ -402,11 +430,11 @@ Assignment: **at least one** integration test for the GraphQL API (plus unit tes
 
 ### Must include
 
-- Setup instructions
-- How to run: `docker-compose up`
-- How to test: `go test ./...`
-- Architecture explanation
-- Design decisions and trade-offs
+- [x] Setup instructions (`README.md`)
+- [x] How to run: `docker compose up --build`
+- [x] How to test: `go test ./...`
+- [x] Architecture explanation
+- [x] Design decisions and trade-offs
 
 ### Demo section
 
@@ -462,11 +490,11 @@ Quick mapping to the take-home brief (Parts 1–4):
 
 ## Definition of done
 
-- [ ] `docker-compose up` works
-- [ ] API is accessible
-- [ ] GraphQL operations work end-to-end
-- [ ] State transitions validated
-- [ ] Worker processes events
-- [ ] Tests pass
-- [ ] CI passes
-- [ ] README is clear and complete
+- [x] `docker compose up --build` starts Postgres, LocalStack, migrate, api, worker
+- [x] GraphQL integration test (Testcontainers) + unit tests
+- [x] GraphQL operations work end-to-end (integration test + manual compose)
+- [x] State transitions validated (domain tests)
+- [x] Worker processes events (with LocalStack + SQS in compose)
+- [x] `go test ./...` passes (Docker for integration); `go test -short` without integration
+- [x] CI workflow exists (Go + codegen drift check + Docker build + Terraform fmt/validate)
+- [x] README is clear and complete

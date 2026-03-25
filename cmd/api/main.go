@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testsabirweb/plateful/internal/config"
 	"github.com/testsabirweb/plateful/internal/graph"
+	"github.com/testsabirweb/plateful/internal/observability"
+	"github.com/testsabirweb/plateful/internal/queue"
 	"github.com/testsabirweb/plateful/internal/store"
 )
 
@@ -23,22 +25,47 @@ func main() {
 		os.Exit(1)
 	}
 
-	pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL)
+	ctx := context.Background()
+
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("database connection", "err", err)
 		os.Exit(1)
 	}
 	defer pool.Close()
 
+	var pub queue.Publisher = queue.NoOpPublisher{}
+	if cfg.SQSEnabled() {
+		sqsClient, err := queue.NewSQS(ctx, queue.SQSConfig{
+			Endpoint:  cfg.SQSEndpoint,
+			Region:    cfg.AWSRegion,
+			QueueName: cfg.SQSQueueName,
+			AccessKey: cfg.AWSAccessKeyID,
+			SecretKey: cfg.AWSSecretAccessKey,
+		})
+		if err != nil {
+			slog.Error("sqs client", "err", err)
+			os.Exit(1)
+		}
+		pub = sqsClient
+		slog.Info("sqs publisher ready", "queue_url", sqsClient.QueueURL())
+	}
+
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
-		Resolvers: &graph.Resolver{Store: store.New(pool)},
+		Resolvers: &graph.Resolver{
+			Store: store.New(pool),
+			Queue: pub,
+		},
 	}))
 
-	http.Handle("/", playground.Handler("Plateful API", "/query"))
-	http.Handle("/query", srv)
+	log := slog.Default()
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", observability.MetricsHandler())
+	mux.Handle("/", observability.HTTPMiddleware(log, playground.Handler("Plateful API", "/query")))
+	mux.Handle("/query", observability.HTTPMiddleware(log, srv))
 
-	slog.Info("api listening", "addr", cfg.HTTPAddr, "playground", "/", "graphql", "/query")
-	if err := http.ListenAndServe(cfg.HTTPAddr, nil); err != nil {
+	slog.Info("api listening", "addr", cfg.HTTPAddr, "playground", "/", "graphql", "/query", "metrics", "/metrics", "sqs", cfg.SQSEnabled())
+	if err := http.ListenAndServe(cfg.HTTPAddr, mux); err != nil {
 		slog.Error("http server", "err", err)
 		os.Exit(1)
 	}

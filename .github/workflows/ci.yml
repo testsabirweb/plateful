@@ -1,0 +1,41 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test (vet + tests; integration needs Docker)
+        run: make test
+
+      - name: Codegen matches repo
+        run: make generate && git diff --exit-code
+
+      - name: Docker build (api target)
+        run: docker build -f Dockerfile --target api .
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: terraform validate
+        working-directory: infra/terraform/modules/catering-service
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate

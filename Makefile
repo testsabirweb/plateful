@@ -1,4 +1,4 @@
-.PHONY: build test run-api run-worker migrate-up migrate-down db-up compose-down migrate-local generate tidy fmt lint
+.PHONY: build test test-all test-short run-api run-worker migrate-up migrate-down db-up compose-down migrate-local generate tidy fmt lint
 
 # golang-migrate CLI (version aligned with go.mod github.com/golang-migrate/migrate/v4).
 MIGRATE := go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1
@@ -49,9 +49,14 @@ fmt:
 lint: fmt
 	go vet ./...
 
-test:
+# Full suite: all packages, all tests including integration (requires Docker for Testcontainers).
+test test-all:
 	go vet ./...
 	go test ./... -count=1 -timeout=15m
+
+# Skip integration tests (no Docker needed).
+test-short:
+	go test -short ./... -count=1 -timeout=2m
 
 run-api:
 	go run ./cmd/api

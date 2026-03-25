@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -25,7 +29,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -64,8 +69,20 @@ func main() {
 	mux.Handle("/", observability.HTTPMiddleware(log, playground.Handler("Plateful API", "/query")))
 	mux.Handle("/query", observability.HTTPMiddleware(log, srv))
 
+	httpSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: mux}
+
+	go func() {
+		<-ctx.Done()
+		slog.Info("shutting down api server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("http shutdown", "err", err)
+		}
+	}()
+
 	slog.Info("api listening", "addr", cfg.HTTPAddr, "playground", "/", "graphql", "/query", "metrics", "/metrics", "sqs", cfg.SQSEnabled())
-	if err := http.ListenAndServe(cfg.HTTPAddr, mux); err != nil {
+	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("http server", "err", err)
 		os.Exit(1)
 	}

@@ -20,6 +20,10 @@ db-up:
 	@until docker compose exec -T postgres pg_isready -U plateful -d plateful >/dev/null 2>&1; do sleep 1; done
 	@echo "Ready. Example: export DATABASE_URL='$(DATABASE_URL_LOCAL)' && make migrate-up"
 
+# Starts all compose services (postgres, localstack, api, worker, etc.)
+compose-up:
+	docker compose up -d
+
 # Stops all compose services (postgres, localstack, api, worker, etc.)
 compose-down:
 	docker compose down

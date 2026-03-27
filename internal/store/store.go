@@ -38,6 +38,15 @@ func (s *Store) GetOrderByID(ctx context.Context, id pgtype.UUID) (storedb.Order
 	return o, nil
 }
 
+// GetOrdersByIDs fetches multiple orders in a single query.
+// An empty ids slice returns immediately without hitting the DB.
+func (s *Store) GetOrdersByIDs(ctx context.Context, ids []pgtype.UUID) ([]storedb.Order, error) {
+	if len(ids) == 0 {
+		return []storedb.Order{}, nil
+	}
+	return s.q.GetOrdersByIDs(ctx, ids)
+}
+
 // ListOrders returns orders matching optional filters.
 func (s *Store) ListOrders(ctx context.Context, arg storedb.ListOrdersParams) ([]storedb.Order, error) {
 	return s.q.ListOrders(ctx, arg)

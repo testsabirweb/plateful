@@ -2,11 +2,12 @@ package graph
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/testsabirweb/plateful/internal/graph/model"
 	"github.com/testsabirweb/plateful/internal/store"
+	storedb "github.com/testsabirweb/plateful/internal/store/db"
 	"github.com/vikstrous/dataloadgen"
 )
 
@@ -24,19 +25,39 @@ func newLoaders(s *store.Store) *Loaders {
 		OrderByID: dataloadgen.NewLoader(func(ctx context.Context, ids []string) ([]*model.Order, []error) {
 			out := make([]*model.Order, len(ids))
 			errs := make([]error, len(ids))
+
+			// Parse UUIDs; record per-index parse errors.
+			pgids := make([]pgtype.UUID, 0, len(ids))
+			validIdx := make([]int, 0, len(ids))
 			for i, id := range ids {
 				pgid, err := parseUUID(id)
 				if err != nil {
 					errs[i] = err
 					continue
 				}
-				o, err := s.GetOrderByID(ctx, pgid)
-				if err != nil {
-					if errors.Is(err, store.ErrNotFound) {
-						// nil, nil = not found (GraphQL convention)
-						continue
-					}
+				pgids = append(pgids, pgid)
+				validIdx = append(validIdx, i)
+			}
+
+			// Single batch round-trip to the DB.
+			orders, err := s.GetOrdersByIDs(ctx, pgids)
+			if err != nil {
+				for _, i := range validIdx {
 					errs[i] = err
+				}
+				return out, errs
+			}
+
+			// Index returned rows by UUID bytes for O(1) lookup.
+			byID := make(map[[16]byte]storedb.Order, len(orders))
+			for _, o := range orders {
+				byID[o.ID.Bytes] = o
+			}
+
+			// Align results to original ids slice; missing IDs stay nil (GraphQL convention).
+			for j, i := range validIdx {
+				o, ok := byID[pgids[j].Bytes]
+				if !ok {
 					continue
 				}
 				gql, err := orderToGQL(o)

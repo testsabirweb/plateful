@@ -70,6 +70,40 @@ func (q *Queries) GetOrderByID(ctx context.Context, id pgtype.UUID) (Order, erro
 	return i, err
 }
 
+const getOrdersByIDs = `-- name: GetOrdersByIDs :many
+SELECT id, status, created_at, updated_at, customer_name, notes, total_amount
+FROM orders
+WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) GetOrdersByIDs(ctx context.Context, ids []pgtype.UUID) ([]Order, error) {
+	rows, err := q.db.Query(ctx, getOrdersByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Order{}
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CustomerName,
+			&i.Notes,
+			&i.TotalAmount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOrders = `-- name: ListOrders :many
 SELECT id, status, created_at, updated_at, customer_name, notes, total_amount
 FROM orders

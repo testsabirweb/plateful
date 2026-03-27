@@ -22,6 +22,11 @@ WHERE id = sqlc.arg('id')::uuid
   AND status = sqlc.arg('current_status')::text
 RETURNING id, status, created_at, updated_at, customer_name, notes, total_amount;
 
+-- name: GetOrdersByIDs :many
+SELECT id, status, created_at, updated_at, customer_name, notes, total_amount
+FROM orders
+WHERE id = ANY(sqlc.arg('ids')::uuid[]);
+
 -- name: ListOrders :many
 SELECT id, status, created_at, updated_at, customer_name, notes, total_amount
 FROM orders
